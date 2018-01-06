@@ -169,13 +169,13 @@ int UART0_Init(int fd,int flow_ctrl,int speed,int parity,int databits,int stopbi
                      options.c_cflag |= CS7;
                      printf("7-");
                      break;
-       case 8:    
+       case 8    :    
                      options.c_cflag |= CS8;
                      printf("8-");
                      break;  
-       default:   
-                 printf("\nData bit[%d] is not support\n",databits);
-                 return (FALSE); 
+       default   :   
+                     printf("\nData bit[%d] is not support\n",databits);
+                     return (FALSE); 
     }
 
     // 设置停止位 
@@ -245,13 +245,13 @@ int UART0_Recv(int fd, uchar *rcv_buf,int data_len)
        {
               len = read(fd,rcv_buf,data_len);
 	      //printf("len = %d fs_sele = %d\n",len,fs_sele);
-              tcflush( fd, TCIFLUSH );
+              tcflush( fd, TCIFLUSH );//只接收data_len个数据，没接收完的部分进行清空
               return len;
        }
        else
        {
 	      printf("time out!\n");
-              return FALSE;
+          return FALSE;
        }     
 }
 

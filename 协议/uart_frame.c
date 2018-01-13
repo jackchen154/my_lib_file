@@ -12,15 +12,6 @@
 #define TRUE   0
 #define Time_out 5 //串口超时时间设置
 
-//reg_name为寄存器的具体名称 
-enum reg_enum {zuolicheng=3,youlicheng,chaokuandaiX,chaokuandaiY,chaokuandai1=11,chaokuandai2,chaokuandai3,chaokuandai4,chaokuandai5,chaokuandai6,hongwai1=21,hongwai2,dianliang1=25,dianliang2};
-//reg为寄存器名称对应的实际地址 
-uchar reg[]={0x80,0x81,0x82,0x83,0x84,0x85,0x86,0x87,0x88,0x89,0x8A,0x8B,0x8C,0x8D,0x8E,0x8F,0x90,0x91,0x92,0x93,0x94,0x95,0x96,0x97,0x98,0x99,0x9A};
-//reg_buf寄存器地址所存放的数据(一个寄存器地址的数据为2字节) ,请求响应寄存器后接收解析的数据将会保存到这里 
-unsigned short reg_data[30];
-//buf为接收区的数据，接收到的原始数据将会存放到这里，然后进行解析。
-uchar receive_buf[255];
-
 
 /*******************************************************************
 * 名称：UART0_Open
@@ -178,13 +169,13 @@ int UART0_Init(int fd,int flow_ctrl,int speed,int parity,int databits,int stopbi
                      options.c_cflag |= CS7;
                      printf("7-");
                      break;
-       case 8:    
+       case 8    :    
                      options.c_cflag |= CS8;
                      printf("8-");
                      break;  
-       default:   
-                 printf("\nData bit[%d] is not support\n",databits);
-                 return (FALSE); 
+       default   :   
+                     printf("\nData bit[%d] is not support\n",databits);
+                     return (FALSE); 
     }
 
     // 设置停止位 
@@ -253,8 +244,8 @@ int UART0_Recv(int fd, uchar *rcv_buf,int data_len)
     if(fs_sele)
        {
               len = read(fd,rcv_buf,data_len);
-	        //printf("len = %d fs_sele = %d\n",len,fs_sele);
-              tcflush( fd, TCIFLUSH );//
+	          //printf("len = %d fs_sele = %d\n",len,fs_sele);
+              tcflush( fd, TCIFLUSH );//只接收data_len个数据，没接收完的部分进行清空
               return len;
        }
        else
@@ -302,10 +293,10 @@ int get_data(int fd,uchar *p,unsigned short *p1)
     uchar save_len,i;
     unsigned short crc_result,ck_crc;
     
-    len = UART0_Recv(fd, p,200);
+    len = UART0_Recv(fd, p,62);
     if(len>=0)
     {
-	  //*原始数据调试输出
+	  /*原始数据调试输出
 	  printf("raw_len = %d\n",len);
 	  printf("the raw_data is:\n");
       for(i=0;i<len;i++)
@@ -364,7 +355,7 @@ int send_data(int fd,uchar rw,uchar device_n,uchar reg_n,uchar reg_mun)
 {
 	unsigned int crc,i,len;
 	uchar read_buf[12]={0xaa,0x55,0xcc};
-	uchar write_buf[12]={0xaa,0x55,0xcc};
+	//uchar write_buf[12]={0xaa,0x55,0xcc};
 	if(rw==0)
 	{
 	  read_buf[3]=device_n;
@@ -394,6 +385,7 @@ int send_data(int fd,uchar rw,uchar device_n,uchar reg_n,uchar reg_mun)
             return FALSE;
           }
 	}
+    return TRUE;
 }
 
 
@@ -403,11 +395,19 @@ int send_data(int fd,uchar rw,uchar device_n,uchar reg_n,uchar reg_mun)
 int main(int argc, char **argv)
 {
 
-    int err;//返回调用函数的状态
+
     int len;                        
     int i;
-
     int fd=0; //文件描述符
+    //reg_name为寄存器的具体名称 
+   enum reg_enum {zuolicheng=3,youlicheng,chaokuandaiX,chaokuandaiY,chaokuandai1=11,chaokuandai2,chaokuandai3,chaokuandai4,chaokuandai5,chaokuandai6,hongwai1=21,hongwai2,dianliang1=25,dianliang2};
+   //reg为寄存器名称对应的实际地址 
+   uchar reg[]={0x80,0x81,0x82,0x83,0x84,0x85,0x86,0x87,0x88,0x89,0x8A,0x8B,0x8C,0x8D,0x8E,0x8F,0x90,0x91,0x92,0x93,0x94,0x95,0x96,0x97,0x98,0x99,0x9A};
+   //reg_buf寄存器地址所存放的数据(一个寄存器地址的数据为2字节) ,请求响应寄存器后接收解析的数据将会保存到这里 
+   unsigned short reg_data[30];
+   //buf为接收区的数据，接收到的原始数据将会存放到这里，然后进行解析。
+   uchar receive_buf[255];
+
     fd = UART0_Open(fd,"/dev/ttyS1"); //打开串口，返回文件描述符
     if(fd<0)
     { 
@@ -422,8 +422,8 @@ int main(int argc, char **argv)
     }
      while (1) //循环读取数据
      {  
-       send_data(fd,0,0x81,0x80,27);                       
-       len = get_data(fd,receive_buf,reg_data);		
+       send_data(fd,0,0x81,reg[chaokuandai1],6);//从哪一个寄存器开始，读取多少个寄存器                       
+       len = get_data(fd,receive_buf,&reg_data[chaokuandai1]);//将获取到的值放到相应的寄存器值中		
        if(len > 0)
        {
 	   //rcv_buf[len] = '\0';
@@ -433,14 +433,14 @@ int main(int argc, char **argv)
 	   printf("the reg_data is:\n");
 	   for(i=0;i<len;i++)
    	   {
- 	     if(reg_data[i]>>8==0)printf("0x000%X,",reg_data[i]);//如果数据为单数自动补上0x0
+ 	     if(reg_data[chaokuandai1+i]>>8==0)printf("0x000%X,",reg_data[chaokuandai1+i]);//如果数据为单数自动补上0x0
          else 
-	     if(i==len-1)printf("0x%x}\n",reg_data[i]);//探测是否结束
+	     if(i==len-1)printf("0x%x}\n",reg_data[chaokuandai1+i]);//探测是否结束
 	     else    
-     	 printf("0x%X,",reg_data[i]); //正常输出  	
+     	 printf("0x%X,",reg_data[chaokuandai1+i]); //正常输出  	
         } //*/   
-	       printf("前红外左：%d  前红外右：%d\n",reg_data[hongwai1]>>8,reg_data[hongwai1]&0x00ff);
-           printf("后红外左：%d  后红外右：%d\n",reg_data[hongwai2]>>8,reg_data[hongwai2]&0x00ff);
+	       //printf("前红外左：%d  前红外右：%d\n",reg_data[hongwai1]>>8,reg_data[hongwai1]&0x00ff);
+           //printf("后红外左：%d  后红外右：%d\n",reg_data[hongwai2]>>8,reg_data[hongwai2]&0x00ff);
     
         } 
 	    usleep(500000);                     
